@@ -1,0 +1,91 @@
+name: Actualización diaria del dashboard
+
+on:
+  schedule:
+    - cron: "17 11 * * *"   # 6:17 a. m. hora de Bogotá, todos los días
+  workflow_dispatch:         # botón "Run workflow" para correrlo a mano
+  push:
+    branches: [main]
+    paths-ignore: ["data/**", "README.md"]
+
+permissions:
+  contents: write   # guardar los CSV actualizados en el repo
+  pages: write
+  id-token: write
+
+concurrency:
+  group: daily-dashboard
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HAS_PAT: ${{ secrets.GH_PAT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar ffmpeg (duración de los videos)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Renovar token de Instagram (lunes)
+        # El token de larga duración vence a los 60 días. Si existe el secreto GH_PAT,
+        # se renueva cada lunes y se guarda el nuevo valor en el secreto IG_ACCESS_TOKEN.
+        if: github.event_name == 'schedule' && env.HAS_PAT == 'true'
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [ "$(date -u +%u)" != "1" ]; then echo "No es lunes, no se renueva."; exit 0; fi
+          NEW=$(curl -sS "https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${IG_ACCESS_TOKEN}" | python -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
+          if [ -z "$NEW" ]; then echo "::warning::No se pudo renovar el token de Instagram"; exit 0; fi
+          echo "::add-mask::$NEW"
+          gh secret set IG_ACCESS_TOKEN --repo "${{ github.repository }}" --body "$NEW"
+          echo "IG_ACCESS_TOKEN_NEW=$NEW" >> "$GITHUB_ENV"
+          echo "Token renovado por 60 días."
+
+      - name: Extraer métricas de Instagram
+        env:
+          IG_ACCESS_TOKEN: ${{ env.IG_ACCESS_TOKEN_NEW || secrets.IG_ACCESS_TOKEN }}
+          DATA_DIR: data
+        run: python scripts/extract_reels_metrics.py
+
+      - name: Construir datos del dashboard
+        run: python scripts/build_data.py data site/data
+
+      - name: Re-entrenar modelo de alcance
+        run: |
+          python scripts/train_reach_model.py data/reels_performance.csv model_out
+          for f in model_metrics:m_metrics importance:m_importance local:m_local predictions:m_predictions coefs:m_coefs; do
+            mv "model_out/${f%%:*}.json" "site/data/${f##*:}.json"
+          done
+
+      - name: Guardar CSV actualizados
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add data/*.csv
+          git diff --cached --quiet || git commit -m "data: actualización $(TZ=America/Bogota date +%F)"
+          git push
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

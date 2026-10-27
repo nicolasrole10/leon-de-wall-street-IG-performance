@@ -1,0 +1,1159 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Performance de Reels · El León</title>
+<meta name="description" content="Dashboard de performance de los Reels de El León de Wall Street, actualizado a diario con la API de Instagram.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦁</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --font-anthropic-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-anthropic-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --color-fg:#1f1e1c; --color-fg-muted:#6b6a66; --color-bg:#faf9f6; --color-panel:#ffffff; --color-border-line:#e6e3dc;
+  --color-ok:#2f7d32; --color-warn:#b26a00; --color-bad:#b3261e;
+  --series-1:#2f6fd6; --series-2:#d9822b; --series-3:#2a9d8f; --series-4:#a855f7; --series-5:#e11d48; --series-6:#64748b; --series-7:#ca8a04; --series-8:#0891b2;
+  --cds-font-size-caption:.8125rem; --cds-font-size-body:.9375rem; --cds-font-size-heading:1.0625rem; --cds-font-size-title:1.75rem; --cds-font-weight-medium:550;
+  --cds-gap-xs:4px; --cds-gap-sm:8px; --cds-gap-md:16px; --cds-gap-lg:24px; --cds-gap-xl:32px;
+  --cds-pad-xs:4px; --cds-pad-sm:8px; --cds-pad-md:12px; --cds-pad-lg:20px; --cds-pad-xl:28px; --cds-radius:10px;
+  --cds-chart-grid:#ecebe6; --cds-chart-axis:#c9c6bd; --cds-chart-reference:#9c9a93; --cds-chart-muted:#b8b5ad;
+  --cds-surface-popover:#ffffff; --cds-border:#e0ddd5; --cds-shadow-popover:0 6px 24px rgba(0,0,0,.12); --cds-text-secondary:#6b6a66;
+  --cds-dur-slow:.4s; --cds-ease-out:cubic-bezier(.2,.8,.2,1);
+  --dash-gutter:clamp(16px,4vw,48px);
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --color-fg:#ecebe7; --color-fg-muted:#a3a19a; --color-bg:#1a1917; --color-panel:#232220; --color-border-line:#36342f;
+    --color-ok:#6cc070; --color-warn:#f0a43a; --color-bad:#f2766d;
+    --series-1:#6ea2ff; --series-2:#f0a35e; --series-3:#4cc3b4; --series-4:#c08cff; --series-5:#ff6b8b; --series-6:#94a3b8; --series-7:#eab308; --series-8:#22d3ee;
+    --cds-chart-grid:#2e2d2a; --cds-chart-axis:#4a4843; --cds-chart-reference:#7b7972; --cds-chart-muted:#5d5b55;
+    --cds-surface-popover:#2a2926; --cds-border:#3d3b36; --cds-shadow-popover:0 6px 24px rgba(0,0,0,.5); --cds-text-secondary:#a3a19a;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans);font-size:var(--cds-font-size-body);line-height:1.45}
+#dash-root{padding:var(--cds-gap-lg) var(--dash-gutter) var(--cds-gap-xl);max-width:1400px;margin-inline:auto}
+.dash-skeleton{color:transparent!important;background:linear-gradient(90deg,var(--color-border-line),var(--color-panel),var(--color-border-line));background-size:200% 100%;border-radius:6px;animation:sk 1.4s infinite linear}
+.lw-chart.dash-skeleton,.lw-heat.dash-skeleton,.lw-mchart.dash-skeleton{min-height:200px}
+@keyframes sk{from{background-position:200% 0}to{background-position:-200% 0}}
+.lw b{font-weight:600}
+.lw-foot{margin-top:var(--cds-gap-xl);color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+</style>
+<style>
+.lw{font-family:var(--font-anthropic-sans);color:var(--color-fg);font-variant-numeric:tabular-nums}
+.lw h1{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0}
+.lw h2{font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium);margin:0 0 var(--cds-gap-xs)}
+.lw h3{font-size:var(--cds-font-size-body);font-weight:var(--cds-font-weight-medium);margin:0}
+.lw p{margin:0}
+.lw a{color:inherit}
+.lw-take{color:var(--color-fg-muted);margin-top:var(--cds-gap-xs)}
+.lw-take b{color:var(--color-fg);font-weight:500}
+.lw-nav{display:flex;flex-wrap:wrap;gap:var(--cds-gap-sm) var(--cds-gap-md);align-items:flex-end;justify-content:space-between;margin:var(--cds-gap-lg) 0 var(--cds-gap-lg);border-bottom:1px solid var(--color-border-line)}
+.lw-tabs{display:flex;gap:var(--cds-gap-xs)}
+.lw-tab{background:none;border:0;border-bottom:2px solid transparent;padding:var(--cds-pad-sm) var(--cds-pad-md);color:var(--color-fg-muted);font:inherit;cursor:pointer;margin-bottom:-1px}
+.lw-tab[aria-selected=true]{color:var(--color-fg);border-bottom-color:var(--color-fg)}
+.lw-seg{display:inline-flex;border:1px solid var(--color-border-line);border-radius:var(--cds-radius);overflow:hidden;margin-bottom:var(--cds-gap-sm)}
+.lw-seg button{background:none;border:0;padding:var(--cds-pad-xs) var(--cds-pad-sm);font:inherit;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);cursor:pointer}
+.lw-seg button+button{border-left:1px solid var(--color-border-line)}
+.lw-seg button[aria-pressed=true]{background:var(--color-panel);color:var(--color-fg);font-weight:var(--cds-font-weight-medium)}
+.lw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:var(--cds-gap-md)}
+.lw-card{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-lg);min-width:0}
+.lw-cap{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.lw-tile{display:flex;flex-direction:column;gap:var(--cds-gap-xs)}
+.lw-big{font-family:var(--font-anthropic-serif);font-weight:400;font-size:calc(var(--cds-font-size-title)*1.25);line-height:1.1;min-height:1.1em}
+.lw-delta{font-size:var(--cds-font-size-caption)}
+.lw-up{color:var(--color-ok)}.lw-down{color:var(--color-bad)}.lw-flat{color:var(--color-fg-muted)}
+.lw-note{margin-top:var(--cds-gap-lg);color:var(--color-fg-muted);font-size:var(--cds-font-size-caption);line-height:1.5}
+.lw-chips{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs);margin-bottom:var(--cds-gap-md)}
+.lw-chip{border:1px solid var(--color-border-line);background:none;border-radius:999px;padding:var(--cds-pad-xs) var(--cds-pad-sm);font:inherit;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);cursor:pointer}
+.lw-chip[aria-pressed=true]{background:var(--color-fg);color:var(--color-bg);border-color:var(--color-fg)}
+.lw-row{display:flex;flex-wrap:wrap;gap:var(--cds-gap-md);align-items:center;justify-content:space-between;margin-bottom:var(--cds-gap-md)}
+.lw-check{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);display:flex;gap:var(--cds-gap-xs);align-items:center}
+.lw-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,26rem),1fr));gap:var(--cds-gap-md)}
+.lw-chart{position:relative;min-height:220px;margin-top:var(--cds-gap-sm)}
+.lw-stats{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs) var(--cds-gap-lg);margin-top:var(--cds-gap-sm);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.lw-stats b{color:var(--color-fg);font-weight:500}
+.lw-key{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
+.lw-keyband{display:inline-block;width:12px;height:10px;vertical-align:middle;margin-right:4px;border-radius:2px}
+.lw-tip{position:absolute;pointer-events:none;background:var(--cds-surface-popover);border:1px solid var(--cds-border);border-radius:var(--cds-radius);box-shadow:var(--cds-shadow-popover);padding:var(--cds-pad-xs) var(--cds-pad-sm);font-size:var(--cds-font-size-caption);max-width:16rem;z-index:2}
+.lw-tip .d{color:var(--cds-text-secondary)}
+.lw-fail{display:flex;align-items:center;justify-content:center;gap:6px;min-height:200px;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.lw-fail i{width:.375rem;height:.375rem;border-radius:50%;background:var(--color-bad)}
+.lw-doc{display:grid;gap:var(--cds-gap-md)}
+.lw-doc ul{margin:var(--cds-gap-xs) 0 0;padding-left:1.2em;line-height:1.6}
+.lw-tbl-wrap{max-height:28rem;overflow:auto;margin-top:var(--cds-gap-sm)}
+.lw table{width:100%;border-collapse:collapse;font-size:var(--cds-font-size-caption)}
+.lw th,.lw td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--color-border-line);vertical-align:top}
+.lw th{position:sticky;top:0;background:var(--color-panel);font-weight:var(--cds-font-weight-medium);z-index:1}
+.lw td.n,.lw th.n{text-align:right;white-space:nowrap}
+.lw th button{all:unset;cursor:pointer}
+.lw code{font-size:.92em}
+.lw-search{font:inherit;font-size:var(--cds-font-size-caption);padding:var(--cds-pad-xs) var(--cds-pad-sm);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg);min-width:12rem}
+.lw-new{display:inline-block;font-size:.75em;padding:1px 6px;border-radius:999px;border:1px solid var(--color-ok);color:var(--color-ok);margin-left:4px}
+[data-dash-source-state=empty]{color:transparent}
+[data-dash-source-state=refreshing]{opacity:.5;transition:opacity var(--cds-dur-slow)}
+[hidden]{display:none!important}
+.lw-excl{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs);align-items:center;margin-bottom:var(--cds-gap-md);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.lw-excl button{border:1px dashed var(--color-border-line);background:none;border-radius:999px;padding:2px 8px;font:inherit;color:var(--color-fg);cursor:pointer;max-width:16rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lw-excl .lw-reset{border-style:solid}
+.lw-recalc{font-style:italic}
+.lw-mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,28rem),1fr));gap:var(--cds-gap-md);margin-top:var(--cds-gap-md)}
+.lw-legend{display:flex;flex-wrap:wrap;gap:var(--cds-gap-md);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-top:var(--cds-gap-xs)}
+.lw-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.lw-select{font:inherit;font-size:var(--cds-font-size-caption);padding:var(--cds-pad-xs) var(--cds-pad-sm);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg);max-width:100%}
+.lw-callout{border-left:3px solid var(--color-warn);padding:var(--cds-pad-sm) var(--cds-pad-md);background:var(--color-bg);border-radius:0 var(--cds-radius) var(--cds-radius) 0;margin-top:var(--cds-gap-md);font-size:var(--cds-font-size-caption);line-height:1.55}
+.lw-mchart{position:relative;min-height:260px;margin-top:var(--cds-gap-sm)}
+.lw-fbar{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs);align-items:center;margin:var(--cds-gap-md) 0 var(--cds-gap-sm)}
+.lw-fbar .lw-fval{min-width:0;width:9rem}
+.lw-btn{font:inherit;font-size:var(--cds-font-size-caption);padding:var(--cds-pad-xs) var(--cds-pad-md);border-radius:var(--cds-radius);border:1px solid var(--color-fg);background:var(--color-fg);color:var(--color-bg);cursor:pointer}
+.lw-btn:disabled{opacity:.4;cursor:default}
+.lw-heat{display:grid;grid-template-columns:minmax(6.5rem,auto) repeat(4,minmax(0,1fr));gap:4px;margin-top:var(--cds-gap-md);font-size:var(--cds-font-size-caption)}
+.lw-heat .h{color:var(--color-fg-muted);display:flex;flex-direction:column;justify-content:flex-end;padding:4px 6px;line-height:1.3}
+.lw-heat .h b{color:var(--color-fg);font-weight:var(--cds-font-weight-medium)}
+.lw-heat .rh{justify-content:center}
+.lw-heat .c{border-radius:var(--cds-radius);padding:10px 8px;min-height:4.2rem;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;border:1px solid var(--color-border-line);text-align:center}
+.lw-heat .c .v{font-family:var(--font-anthropic-serif);font-size:var(--cds-font-size-heading);line-height:1.1}
+.lw-heat .c .n{font-size:.85em;opacity:.8}
+.lw-heat .c.tot{background:var(--color-bg)}
+.lw-heat .c.thin{background-image:repeating-linear-gradient(45deg,transparent 0 6px,rgba(127,127,127,.12) 6px 7px)}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="dash-shim.js"></script>
+</head>
+<body>
+<div id="dash-root">
+<div class="lw">
+  <header id="top">
+    <h1>Performance de Reels · El León de Wall Street</h1>
+    <p class="lw-cap" style="margin-top:4px">Datos de la API de Instagram · actualizado el <span data-source="resumen" data-field="extraido" data-row="0" class="dash-skeleton">—</span> · se actualiza todos los días</p>
+    <p class="lw-take" id="takeaway">Últimos <span class="lw-wlabel">30</span> días: <b data-source="scorecard" data-field="n" data-where="win=30&amp;metric=reach" class="lw-t-n dash-skeleton">—</b> reels con alcance promedio de <b data-source="scorecard" data-field="avg" data-where="win=30&amp;metric=reach" class="lw-t-reach dash-skeleton">—</b> <span data-source="scorecard" data-field="delta" data-where="win=30&amp;metric=reach" class="lw-t-delta"></span> vs. los <span class="lw-wlabel">30</span> días previos.</p>
+  </header>
+
+  <nav class="lw-nav">
+    <div class="lw-tabs" role="tablist">
+      <button class="lw-tab" role="tab" data-tab="data" id="tab-data">Data</button>
+      <button class="lw-tab" role="tab" data-tab="scorecard" id="tab-scorecard">Scorecard</button>
+      <button class="lw-tab" role="tab" data-tab="trends" id="tab-trends">Trends</button>
+      <button class="lw-tab" role="tab" data-tab="formato" id="tab-formato">Duración × Hook</button>
+      <button class="lw-tab" role="tab" data-tab="modelo" id="tab-modelo">Modelo</button>
+    </div>
+    <div class="lw-seg" role="group" aria-label="Ventana de tiempo">
+      <button data-win="30">30 días</button><button data-win="60">60 días</button><button data-win="90">90 días</button><button data-win="180">180 días</button>
+    </div>
+  </nav>
+
+  <!-- ============ SCORECARD ============ -->
+  <section id="scorecard" class="lw-page">
+    <div class="lw-grid" id="score-grid"></div>
+    <p class="lw-note">Promedios por reel publicado en la ventana, comparados contra la ventana anterior del mismo largo. Se excluyen los reels con menos de 3 días de publicados porque todavía están acumulando vistas. Las métricas de Meta son acumuladas (lifetime), así que los reels viejos tienen más tiempo para sumar. <b>Seguidores nuevos</b> es un dato de la cuenta completa por día (la API ya no entrega seguidores por reel) y Meta tarda ~48 h en consolidarlo; la API solo guarda los últimos 30 días, así que el histórico crece con cada corrida del script.</p>
+  </section>
+
+  <!-- ============ TRENDS ============ -->
+  <section id="trends" class="lw-page" hidden>
+    <div class="lw-row">
+      <div class="lw-chips" id="metric-chips" role="group" aria-label="Métricas"></div>
+      <label class="lw-check"><input type="checkbox" id="log-scale"> Escala logarítmica (ayuda con reels virales)</label>
+    </div>
+    <div class="lw-excl" id="excl-bar" hidden></div>
+    <div class="lw-charts" id="trend-charts"></div>
+    <p class="lw-note">Haz click en un punto para sacarlo de los gráficos: el reel desaparece de todas las métricas y el promedio, la mediana y el rango medio se recalculan sin él. Los excluidos aparecen arriba y se restauran con un click. Likes, guardados, enviados y comentarios se muestran como % del alcance (cuentas alcanzadas que hicieron esa acción); interacciones como % de las vistas; engagement es interacciones ÷ alcance. Cada punto es un reel (puntos huecos: menos de 3 días, no entran al cálculo). La banda sombreada es el <b>rango medio</b> (percentil 25 a 75: donde cae la mitad central de tus reels), la línea punteada es el <b>promedio</b> y la sólida la <b>mediana</b>. Si el promedio está muy por encima de la mediana, un par de virales está jalando el número.</p>
+  </section>
+
+  <!-- ============ FORMATO ============ -->
+  <section id="formato" class="lw-page" hidden>
+    <div class="lw-row">
+      <div class="lw-seg" role="group" aria-label="Ventana" id="fwin-seg">
+        <button data-fwin="all">Todo el histórico</button><button data-fwin="180">180 días</button><button data-fwin="90">90 días</button>
+      </div>
+      <div class="lw-chips" id="fmetric-chips" role="group" aria-label="Métrica" style="margin:0"></div>
+    </div>
+    <div class="lw-card" id="heatmap">
+      <h2 id="heat-title">Alcance mediano por duración y skip rate</h2>
+      <p class="lw-cap">Cada celda agrupa los reels con esa duración y ese skip rate (primeros 3 s). El número chico es cuántos reels hay; celdas rayadas tienen menos de 5 reels, tómalas con pinzas. Más oscuro = mejor.</p>
+      <div class="lw-heat" data-source="matrix"></div>
+    </div>
+    <p class="lw-note"><b>Duración:</b> corto = menos de 45 s; medio = 45 a 80 s; largo = 80 s o más (los reels de 80 a 90 s, que quedaban entre tus rangos, van en largo). <b>Skip rate</b> (tu promedio es ~51%): mejor que la media = menos de 40% (incluye los menores a 25%); promedio = 40% a 60%; peor que la media = más de 60%. Se excluyen los reels con menos de 3 días y los que no tienen duración. Se usa la mediana porque un solo viral distorsiona mucho el promedio.</p>
+  </section>
+
+  <!-- ============ MODELO ============ -->
+  <section id="modelo" class="lw-page" hidden>
+    <div class="lw-row">
+      <div class="lw-seg" role="group" aria-label="Especificación" id="spec-seg">
+        <button data-spec="tasas">Features de calidad (tasas)</button><button data-spec="conteos">Features de conteo</button>
+      </div>
+      <div class="lw-seg" role="group" aria-label="Modelo" id="model-seg">
+        <button data-model="xgboost">XGBoost</button><button data-model="lineal">Regresión lineal</button>
+      </div>
+    </div>
+
+    <div class="lw-card">
+      <h2>¿Qué explica el alcance de un reel?</h2>
+      <p class="lw-cap" id="spec-desc" style="line-height:1.6"></p>
+      <div class="lw-callout" id="spec-caveat"></div>
+    </div>
+
+    <div class="lw-grid" style="margin-top:var(--cds-gap-md)" id="m-tiles">
+      <div class="lw-card lw-tile"><h3>R² XGBoost (fuera de muestra)</h3><div class="lw-big dash-skeleton" data-source="m_metrics" data-field="r2_cv" data-mt="xgboost">—</div><div class="lw-cap">Validación cruzada 5 folds × 4 repeticiones, sobre log(alcance)</div></div>
+      <div class="lw-card lw-tile"><h3>R² regresión lineal (fuera de muestra)</h3><div class="lw-big dash-skeleton" data-source="m_metrics" data-field="r2_cv" data-mt="lineal">—</div><div class="lw-cap">Misma validación cruzada</div></div>
+      <div class="lw-card lw-tile"><h3>Error mediano XGBoost</h3><div class="lw-big dash-skeleton" data-source="m_metrics" data-field="error_mediano_pct" data-mt="xgboost">—</div><div class="lw-cap">Error típico al predecir el alcance de un reel nuevo</div></div>
+      <div class="lw-card lw-tile"><h3>Error mediano lineal</h3><div class="lw-big dash-skeleton" data-source="m_metrics" data-field="error_mediano_pct" data-mt="lineal">—</div><div class="lw-cap">Reels usados: <span data-source="m_metrics" data-field="n" data-mt="lineal">—</span> (≥3 días)</div></div>
+    </div>
+
+    <div class="lw-mgrid">
+      <div class="lw-card" id="imp-xgboost">
+        <h2>Importancia de variables · XGBoost</h2>
+        <p class="lw-cap">Cada método en % de su total, para poder compararlos en una misma escala.</p>
+        <div class="lw-mchart" data-source="m_importance_share"></div>
+        <div class="lw-legend"></div>
+      </div>
+      <div class="lw-card" id="imp-lineal">
+        <h2>Importancia de variables · Regresión lineal</h2>
+        <p class="lw-cap">Cada método en % de su total, para poder compararlos en una misma escala.</p>
+        <div class="lw-mchart" data-source="m_importance_share"></div>
+        <div class="lw-legend"></div>
+      </div>
+      <div class="lw-card" id="beeswarm">
+        <h2>SHAP por reel · <span class="lw-mname"></span></h2>
+        <p class="lw-cap">Cada punto es un reel. A la derecha empuja el alcance hacia arriba, a la izquierda hacia abajo. Color: valor de la variable en ese reel (oscuro = alto).</p>
+        <div class="lw-mchart" data-source="m_local"></div>
+        <div class="lw-legend"><span><i class="lw-lo"></i>Valor bajo</span><span><i class="lw-hi"></i>Valor alto</span></div>
+      </div>
+      <div class="lw-card" id="coefs">
+        <h2>Regresión lineal (OLS) · efecto por +1 desviación estándar</h2>
+        <p class="lw-cap">Cambio % en el alcance cuando la variable sube una desviación estándar, manteniendo las demás fijas. Barras: intervalo de confianza 95% (errores robustos HC3). Si cruza 0, no es significativo.</p>
+        <div class="lw-mchart" data-source="m_coefs"></div>
+      </div>
+      <div class="lw-card" id="pred-scatter">
+        <h2>Alcance real vs. predicho · <span class="lw-mname"></span></h2>
+        <p class="lw-cap">Predicciones fuera de muestra (cada reel predicho por un modelo que no lo vio). Sobre la diagonal = acierto perfecto. Escala log.</p>
+        <div class="lw-mchart" data-source="m_predictions"></div>
+      </div>
+      <div class="lw-card" id="local-exp">
+        <h2>Explicación de un reel</h2>
+        <select class="lw-select" id="reel-pick" aria-label="Reel a explicar"></select>
+        <p class="lw-cap" id="local-summary" style="margin-top:var(--cds-gap-sm)"></p>
+        <div class="lw-mchart" data-source="m_local m_predictions" style="min-height:200px"></div>
+        <div class="lw-legend"><span><i style="background:var(--color-ok)"></i>Sube el alcance</span><span><i style="background:var(--color-bad)"></i>Baja el alcance</span><span>Barra llena: SHAP · contorno: LIME</span></div>
+      </div>
+    </div>
+    <p class="lw-note">Cómo leer los métodos: <b>permutación</b> mide cuánto cae el R² fuera de muestra al revolver una variable (lo más honesto sobre poder predictivo); <b>SHAP</b> reparte cada predicción entre las variables (promedio de |SHAP| = importancia global, en log-alcance); <b>LIME</b> ajusta un modelo lineal local alrededor de cada reel y aquí se promedia |peso|. Con ~150 reels, diferencias pequeñas entre variables no son confiables. Esto es predicción, no causalidad: el modelo dice qué variables acompañan a un alcance alto, no que subirlas cause más alcance.</p>
+  </section>
+
+  <!-- ============ DATA ============ -->
+  <section id="data" class="lw-page" hidden>
+    <div class="lw-doc">
+      <div class="lw-card">
+        <h2>De dónde vienen los datos</h2>
+        <p class="lw-cap" style="line-height:1.6">El script <code>extract_reels_metrics.py</code> consulta la Instagram API (Instagram Login, <code>graph.instagram.com</code>, solo lecturas GET) para la cuenta @leondewallstreett. Por cada reel trae sus datos básicos de <code>/{ig-user}/media</code> y sus métricas de <code>/{reel-id}/insights</code>. Hoy hay <b data-source="resumen" data-field="reels" data-row="0" class="dash-skeleton">—</b> reels, publicados entre el <span data-source="resumen" data-field="desde" data-row="0" class="dash-skeleton">—</span> y el <span data-source="resumen" data-field="hasta" data-row="0" class="dash-skeleton">—</span>; extracción del <span data-source="resumen" data-field="extraido" data-row="0" class="dash-skeleton">—</span>. Todas las métricas son <b>acumuladas desde la publicación</b> (lifetime) al momento de la extracción. Fechas y horas en hora de Bogotá.</p>
+      </div>
+
+      <div class="lw-card">
+        <h2>Variables por reel</h2>
+        <div class="lw-tbl-wrap" style="max-height:none">
+        <table>
+          <thead><tr><th>Variable</th><th>Campo / métrica API</th><th>Qué mide</th><th>Notas</th></tr></thead>
+          <tbody>
+            <tr><td>Reel_ID</td><td><code>id</code></td><td>Identificador único del reel.</td><td>Llave para el modo incremental.</td></tr>
+            <tr><td>Fecha / Día / Hora</td><td><code>timestamp</code></td><td>Momento de publicación.</td><td>La API lo da en UTC; el CSV lo guarda en UTC y el dashboard lo pasa a Bogotá (UTC-5).</td></tr>
+            <tr><td>Nombre / Título</td><td><code>caption</code></td><td>Primera línea del caption (máx. 120 caracteres).</td><td></td></tr>
+            <tr><td>Permalink <span class="lw-new">nuevo</span></td><td><code>permalink</code></td><td>Link público al reel.</td><td></td></tr>
+            <tr><td>Duración (seg) <span class="lw-new">nuevo</span></td><td><code>media_url</code> + ffprobe</td><td>Duración real del video.</td><td>La API no tiene un campo de duración (el viejo siempre llegaba en 0). El script lee solo el encabezado del MP4 en <code>media_url</code>; se mide una vez por reel. Algunos reels (normalmente con audio con derechos) no traen <code>media_url</code> y quedan vacíos.</td></tr>
+            <tr><td>Visualizaciones</td><td><code>views</code></td><td>Veces que se reprodujo el reel en Instagram, incluye repeticiones.</td><td>Reemplazó a <code>plays</code> e <code>impressions</code> (deprecadas).</td></tr>
+            <tr><td>Alcance</td><td><code>reach</code></td><td>Cuentas únicas que vieron el reel al menos una vez.</td><td>Estimado por Meta.</td></tr>
+            <tr><td>Prom. tiempo de visualización</td><td><code>ig_reels_avg_watch_time</code></td><td>Segundos promedio que se ve cada reproducción.</td><td>La API lo da en ms; se convierte a segundos.</td></tr>
+            <tr><td>Tiempo total de visualización</td><td><code>ig_reels_video_view_total_time</code></td><td>Suma de todo el tiempo visto, incluye repeticiones.</td><td>En segundos.</td></tr>
+            <tr><td>Skip Rate (%) <span class="lw-new">nuevo</span></td><td><code>reels_skip_rate</code></td><td>% de vistas que se saltaron el reel en los primeros 3 segundos.</td><td>Mide qué tan bien funciona el hook. Más bajo es mejor.</td></tr>
+            <tr><td>Me Gusta</td><td><code>likes</code></td><td>Likes del reel.</td><td></td></tr>
+            <tr><td>Comentarios</td><td><code>comments</code></td><td>Comentarios del reel.</td><td>Sube mucho con CTAs tipo "comenta X y te envío...".</td></tr>
+            <tr><td>Compartidos (Enviados)</td><td><code>shares</code></td><td>Veces que se compartió (DM, stories, etc.).</td><td>Señal fuerte para el algoritmo de alcance a no seguidores.</td></tr>
+            <tr><td>Guardados</td><td><code>saved</code></td><td>Veces que se guardó.</td><td></td></tr>
+            <tr><td>Total Interacciones</td><td><code>total_interactions</code></td><td>Likes + guardados + comentarios + compartidos, netos de deshacer.</td><td></td></tr>
+            <tr><td>Retención (%) <span class="lw-new">nuevo</span></td><td>Tiempo prom. visto ÷ Duración</td><td>Qué parte del video se ve en promedio en cada reproducción.</td><td>Las repeticiones cuentan como reproducciones, así que un reel corto que se repite puede pasar de 100%. No es la curva de retención de la app (Meta no la entrega por API).</td></tr>
+            <tr><td>Fecha de Extracción <span class="lw-new">nuevo</span></td><td>(del script)</td><td>Día en que se leyeron las métricas.</td><td>Sirve para saber qué tan maduro estaba el reel.</td></tr>
+            <tr><td>Engagement (calculado)</td><td>Total Interacciones ÷ Alcance</td><td>Qué proporción de las cuentas alcanzadas interactuó.</td><td>Calculado en el dashboard; el promedio es el promedio de los ratios por reel.</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="lw-card">
+        <h2>Variables de la cuenta</h2>
+        <ul class="lw-cap">
+          <li><b>Seguidores nuevos por día</b> (<code>follower_count</code>, period=day) <span class="lw-new">nuevo</span>: archivo <code>followers_daily.csv</code>. La API solo devuelve los últimos 30 días y tarda ~48 h en consolidar, por eso el script lo acumula en cada corrida.</li>
+        </ul>
+      </div>
+
+      <div class="lw-card">
+        <h2>Revisión de la API de Meta (octubre 2026)</h2>
+        <ul class="lw-cap">
+          <li><b>Disponible y agregada:</b> <code>reels_skip_rate</code> (skip en los primeros 3 s). Probada con tu token y funciona.</li>
+          <li><b>Disponibles solo si el reel se comparte a Facebook:</b> <code>facebook_views</code> y <code>crossposted_views</code>. Con tus reels actuales devuelven error porque no se publican en Facebook.</li>
+          <li><b>Documentadas pero no habilitadas con tu tipo de token:</b> <code>reposts</code> (la API la rechaza hoy) y <code>total_views</code> / <code>total_likes</code> / <code>total_comments</code> (requieren Facebook Login, tu token es Instagram Login).</li>
+          <li><b>No existen para reels:</b> <code>follows</code>, <code>profile_visits</code> y <code>profile_activity</code> (solo posts de feed y stories). Por eso "Subscriptores" se mide a nivel cuenta por día y no por reel.</li>
+          <li><b>Duración:</b> no existe como métrica; se obtiene del archivo de video (<code>media_url</code>), que la API sí entrega para tus propios reels.</li>
+          <li><b>Sin breakdowns</b> para métricas de reels (ni por edad, país ni fuente de tráfico).</li>
+        </ul>
+      </div>
+
+      <div class="lw-card" id="reels-card">
+        <div class="lw-row" style="margin:0">
+          <h2 style="margin:0">Reels</h2>
+          <span class="lw-cap" id="reel-count"></span>
+        </div>
+        <div class="lw-fbar" id="filter-bar">
+          <select class="lw-select" id="f-col" aria-label="Columna"></select>
+          <select class="lw-select" id="f-op" aria-label="Condición"></select>
+          <input class="lw-search lw-fval" id="f-val" aria-label="Valor" placeholder="Valor">
+          <input class="lw-search lw-fval" id="f-val2" aria-label="Hasta" placeholder="y" hidden>
+          <button class="lw-btn" id="f-add">Agregar filtro</button>
+        </div>
+        <div class="lw-excl" id="f-chips" hidden></div>
+        <p class="lw-cap">Likes, guardados, enviados y comentarios en % de las vistas. En columnas en % escribe el número tal cual (1.5 = 1.5%).</p>
+        <div class="lw-tbl-wrap">
+          <table id="reels-table" data-source="reels_metrics" data-row-key="reel_id">
+            <thead><tr>
+              <th data-source="reels_metrics" data-field="fecha"><button data-sort="fecha">Fecha</button></th>
+              <th data-source="reels_metrics" data-field="titulo"><button data-sort="titulo">Título</button></th>
+              <th class="n" data-source="reels_metrics" data-field="views"><button data-sort="views">Vistas</button></th>
+              <th class="n" data-source="reels_metrics" data-field="reach"><button data-sort="reach">Alcance</button></th>
+              <th class="n" data-source="reels_metrics" data-field="like_pv"><button data-sort="like_pv">Likes %</button></th>
+              <th class="n" data-source="reels_metrics" data-field="save_pv"><button data-sort="save_pv">Guardados %</button></th>
+              <th class="n" data-source="reels_metrics" data-field="share_pv"><button data-sort="share_pv">Enviados %</button></th>
+              <th class="n" data-source="reels_metrics" data-field="comment_pv"><button data-sort="comment_pv">Coment. %</button></th>
+              <th class="n" data-source="reels_metrics" data-field="engagement"><button data-sort="engagement">Engagement</button></th>
+              <th class="n" data-source="reels_metrics" data-field="skip_rate"><button data-sort="skip_rate">Skip</button></th>
+              <th class="n" data-source="reels_metrics" data-field="retention"><button data-sort="retention">Retención</button></th>
+              <th class="n" data-source="reels_metrics" data-field="duracion_s"><button data-sort="duracion_s">Duración</button></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---------- Cálculos ---------- */
+dash.calc('reels_metrics', {
+  inputs: ['reels'],
+  title: 'Reels con engagement',
+  description: 'Cada reel con engagement = interacciones ÷ alcance y su edad en días a la fecha de extracción.',
+  fn: (reels) => {
+    const end = Math.max(...reels.map((r) => Date.parse(r.extraido)));
+    const num = (x) => (x === null || x === undefined || x === '' ? null : Number(x));
+    return reels.map((r) => ({
+      reel_id: String(r.reel_id), fecha: r.fecha, hora: r.hora, dia: r.dia, titulo: r.titulo, permalink: r.permalink,
+      views: num(r.views), reach: num(r.reach), likes: num(r.likes), comments: num(r.comments),
+      shares: num(r.shares), saves: num(r.saves), interactions: num(r.interactions),
+      avg_watch_s: num(r.avg_watch_s), skip_rate: num(r.skip_rate),
+      engagement: num(r.reach) ? Math.round((num(r.interactions) / num(r.reach)) * 10000) / 10000 : null,
+      like_rate: num(r.reach) ? Math.round((num(r.likes) / num(r.reach)) * 1e5) / 1e5 : null,
+      save_rate: num(r.reach) ? Math.round((num(r.saves) / num(r.reach)) * 1e5) / 1e5 : null,
+      share_rate: num(r.reach) ? Math.round((num(r.shares) / num(r.reach)) * 1e5) / 1e5 : null,
+      comment_rate: num(r.reach) ? Math.round((num(r.comments) / num(r.reach)) * 1e5) / 1e5 : null,
+      duracion_s: num(r.duracion_s),
+      retention: num(r.duracion_s) ? Math.round((num(r.avg_watch_s) / num(r.duracion_s)) * 1e4) / 1e4 : null,
+      like_pv: num(r.views) ? Math.round((num(r.likes) / num(r.views)) * 1e5) / 1e5 : null,
+      save_pv: num(r.views) ? Math.round((num(r.saves) / num(r.views)) * 1e5) / 1e5 : null,
+      share_pv: num(r.views) ? Math.round((num(r.shares) / num(r.views)) * 1e5) / 1e5 : null,
+      comment_pv: num(r.views) ? Math.round((num(r.comments) / num(r.views)) * 1e5) / 1e5 : null,
+      inter_view_rate: num(r.views) ? Math.round((num(r.interactions) / num(r.views)) * 1e5) / 1e5 : null,
+      edad_dias: Math.round((end - Date.parse(r.fecha)) / 864e5),
+    }));
+  },
+});
+
+dash.calc('resumen', {
+  inputs: ['reels'],
+  title: 'Resumen del archivo',
+  description: 'Cantidad de reels, rango de fechas de publicación y fecha de extracción.',
+  fn: (reels) => {
+    const f = reels.map((r) => r.fecha).sort();
+    const e = reels.map((r) => r.extraido).sort();
+    return [{ reels: reels.length, desde: f[0], hasta: f[f.length - 1], extraido: e[e.length - 1] }];
+  },
+});
+
+dash.calc('scorecard', {
+  inputs: ['reels_metrics', 'followers'],
+  title: 'Promedios del scorecard',
+  description: 'Promedio por reel (≥3 días de publicado) en cada ventana vs. la ventana anterior; seguidores nuevos = promedio diario consolidado (sin los últimos 2 días).',
+  fn: (reels_metrics, followers) => {
+    const DAY = 864e5;
+    const end = Math.max(...reels_metrics.map((r) => Date.parse(r.fecha) + r.edad_dias * DAY));
+    const reels = reels_metrics.filter((r) => r.edad_dias >= 3).map((r) => ({ ...r, t: Date.parse(r.fecha) }));
+    const fol = followers.map((f) => ({ t: Date.parse(f.fecha), followers: Number(f.seguidores_nuevos) })).filter((f) => f.t < end - 2 * DAY);
+    const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : null);
+    const inWin = (t, a, b) => t > end - b * DAY && t <= end - a * DAY;
+    const round = (m, v) => (v === null ? null : m === 'engagement' ? Math.round(v * 10000) / 10000 : Math.round(v * 10) / 10);
+    const rows = [];
+    for (const w of [30, 60, 90, 180]) {
+      for (const m of ['likes', 'saves', 'shares', 'followers', 'engagement', 'reach']) {
+        const src = m === 'followers' ? fol : reels;
+        const cur = src.filter((r) => inWin(r.t, 0, w) && r[m] !== null).map((r) => r[m]);
+        const prev = src.filter((r) => inWin(r.t, w, 2 * w) && r[m] !== null).map((r) => r[m]);
+        const a = mean(cur), p = mean(prev);
+        rows.push({ win: String(w), metric: m, avg: round(m, a), prev: round(m, p), n: cur.length, n_prev: prev.length,
+          delta: a !== null && p ? Math.round(((a - p) / p) * 1000) / 1000 : null });
+      }
+    }
+    return rows;
+  },
+});
+
+dash.calc('trend_stats', {
+  inputs: ['reels_metrics', 'followers'],
+  title: 'Promedio, mediana y rango medio',
+  description: 'Por ventana y métrica: promedio, mediana y percentiles 25 y 75 de los reels con ≥3 días (seguidores: días consolidados).',
+  fn: (reels_metrics, followers) => {
+    const DAY = 864e5;
+    const end = Math.max(...reels_metrics.map((r) => Date.parse(r.fecha) + r.edad_dias * DAY));
+    const reels = reels_metrics.filter((r) => r.edad_dias >= 3).map((r) => ({ ...r, t: Date.parse(r.fecha) }));
+    const fol = followers.map((f) => ({ t: Date.parse(f.fecha), followers: Number(f.seguidores_nuevos) })).filter((f) => f.t < end - 2 * DAY);
+    const q = (s, p) => { const i = (s.length - 1) * p, lo = Math.floor(i); return s[lo] + (s[Math.min(lo + 1, s.length - 1)] - s[lo]) * (i - lo); };
+    const rows = [];
+    for (const w of [30, 60, 90, 180]) {
+      for (const m of ['views', 'reach', 'like_rate', 'save_rate', 'share_rate', 'comment_rate', 'inter_view_rate', 'engagement', 'avg_watch_s', 'retention', 'duracion_s', 'skip_rate', 'followers']) {
+        const src = m === 'followers' ? fol : reels;
+        const v = src.filter((r) => r.t > end - w * DAY && r[m] !== null && r[m] !== undefined).map((r) => r[m]).sort((a, b) => a - b);
+        const r4 = (x) => Math.round(x * 10000) / 10000;
+        rows.push(v.length
+          ? { win: String(w), metric: m, n: v.length, mean: r4(v.reduce((s, x) => s + x, 0) / v.length), median: r4(q(v, 0.5)), p25: r4(q(v, 0.25)), p75: r4(q(v, 0.75)) }
+          : { win: String(w), metric: m, n: 0, mean: null, median: null, p25: null, p75: null });
+      }
+    }
+    return rows;
+  },
+});
+
+/* ---------- Configuración ---------- */
+const M = {
+  likes: { label: 'Likes promedio', short: 'Likes', f: 'num' },
+  saves: { label: 'Guardados promedio', short: 'Guardados', f: 'num' },
+  shares: { label: 'Enviados promedio', short: 'Enviados', f: 'num' },
+  followers: { label: 'Seguidores nuevos / día', short: 'Seguidores nuevos / día', f: 'num' },
+  engagement: { label: 'Engagement promedio', short: 'Engagement', f: 'pct' },
+  reach: { label: 'Alcance promedio', short: 'Alcance', f: 'num' },
+  views: { short: 'Visualizaciones', f: 'num' },
+  comments: { short: 'Comentarios', f: 'num' },
+  interactions: { short: 'Interacciones', f: 'num' },
+  avg_watch_s: { short: 'Tiempo prom. de visualización', f: 'sec' },
+  skip_rate: { short: 'Skip rate (3 s)', f: 'pp', lowerBetter: true },
+  like_rate: { short: 'Likes · % del alcance', f: 'pct' },
+  save_rate: { short: 'Guardados · % del alcance', f: 'pct' },
+  share_rate: { short: 'Enviados · % del alcance', f: 'pct' },
+  comment_rate: { short: 'Comentarios · % del alcance', f: 'pct' },
+  inter_view_rate: { short: 'Interacciones · % de las vistas', f: 'pct' },
+  retention: { short: 'Retención · % del video visto por play', f: 'pct' },
+  duracion_s: { short: 'Duración del video', f: 'sec' },
+};
+M.engagement.short = 'Engagement · interacciones ÷ alcance';
+const SCORE = ['likes', 'saves', 'shares', 'followers', 'engagement', 'reach'];
+const TREND_ORDER = ['views', 'reach', 'like_rate', 'save_rate', 'share_rate', 'comment_rate', 'inter_view_rate', 'engagement', 'avg_watch_s', 'retention', 'duracion_s', 'skip_rate', 'followers'];
+const selected = new Set(['reach', 'engagement', 'save_rate', 'share_rate', 'retention']);
+const excluded = new Map(); // clave -> etiqueta
+let win = '30';
+let tab = 'scorecard';
+
+const compact = new Intl.NumberFormat('es', { notation: 'compact', maximumFractionDigits: 1 });
+const fmt = (m, v) => {
+  if (v === null || v === undefined || Number.isNaN(v)) return '—';
+  const f = M[m].f;
+  if (f === 'pct') return d3.format('.2%')(v);
+  if (f === 'pp') return d3.format('.1f')(v) + '%';
+  if (f === 'sec') return d3.format('.1f')(v) + ' s';
+  return Math.abs(v) >= 10000 ? compact.format(v) : d3.format(v < 100 ? ',.1f' : ',.0f')(v).replace(/\.0$/, '');
+};
+const fmtDate = (s) => d3.utcFormat('%-d %b %Y')(new Date(s));
+const ok = (id) => dash.data(id).status === 'ok';
+
+/* ---------- Tabs y ventana ---------- */
+function showTab(t, push) {
+  tab = t;
+  document.querySelectorAll('.lw-tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+  document.querySelectorAll('.lw-page').forEach((p) => (p.hidden = p.id !== t));
+  if (push) dash.setLink(t);
+  draw();
+}
+document.querySelectorAll('.lw-tab').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab, true)));
+document.querySelectorAll('.lw-nav button[data-win]').forEach((b) => b.addEventListener('click', () => { win = b.dataset.win; draw(); }));
+document.getElementById('log-scale').addEventListener('change', () => draw());
+
+/* ---------- Scorecard ---------- */
+const grid = document.getElementById('score-grid');
+SCORE.forEach((m) => {
+  const card = document.createElement('div');
+  card.className = 'lw-card lw-tile';
+  card.id = 'kpi-' + m;
+  card.innerHTML = `<h3></h3><div class="lw-big dash-skeleton" data-source="scorecard" data-field="avg">—</div>
+    <div class="lw-delta" data-source="scorecard" data-field="delta"></div><div class="lw-cap"></div>`;
+  card.querySelector('h3').textContent = M[m].label;
+  grid.appendChild(card);
+});
+
+function drawScorecard() {
+  const s = dash.data('scorecard');
+  SCORE.forEach((m) => {
+    const card = document.getElementById('kpi-' + m);
+    const big = card.querySelector('.lw-big'), dl = card.querySelector('.lw-delta'), cap = card.querySelector('.lw-cap');
+    const where = `win=${win}&metric=${m}`;
+    big.setAttribute('data-where', where); dl.setAttribute('data-where', where);
+    if (s.status !== 'ok') { big.textContent = '—'; dl.textContent = ''; if (s.status === 'error') big.classList.remove('dash-skeleton'); return; }
+    big.classList.remove('dash-skeleton');
+    const r = s.data.find((x) => x.win === win && x.metric === m);
+    big.textContent = fmt(m, r.avg);
+    if (r.delta === null) { dl.className = 'lw-delta lw-flat'; dl.textContent = 'Sin ventana previa para comparar'; }
+    else {
+      const good = M[m].lowerBetter ? r.delta < 0 : r.delta > 0;
+      dl.className = 'lw-delta ' + (Math.abs(r.delta) < 0.005 ? 'lw-flat' : good ? 'lw-up' : 'lw-down');
+      dl.textContent = `${r.delta > 0 ? '+' : ''}${d3.format('.1%')(r.delta)} vs. ${win} días previos (${fmt(m, r.prev)})`;
+    }
+    cap.textContent = m === 'followers'
+      ? `Cuenta completa · ${r.n} días con datos en la ventana`
+      : `Por reel · ${r.n} reels en los últimos ${win} días`;
+  });
+}
+
+/* ---------- Takeaway ---------- */
+function drawTake() {
+  document.querySelectorAll('.lw-wlabel').forEach((e) => (e.textContent = win));
+  const s = dash.data('scorecard');
+  const els = { n: document.querySelector('.lw-t-n'), reach: document.querySelector('.lw-t-reach'), d: document.querySelector('.lw-t-delta') };
+  const where = `win=${win}&metric=reach`;
+  Object.values(els).forEach((e) => e.setAttribute('data-where', where));
+  if (s.status !== 'ok') return;
+  const r = s.data.find((x) => x.win === win && x.metric === 'reach');
+  if (!r) return;
+  els.n.classList.remove('dash-skeleton'); els.reach.classList.remove('dash-skeleton');
+  els.n.textContent = r.n;
+  els.reach.textContent = fmt('reach', r.avg);
+  els.d.className = 'lw-t-delta ' + (r.delta === null ? 'lw-flat' : r.delta > 0 ? 'lw-up' : 'lw-down');
+  els.d.textContent = r.delta === null ? '(sin comparación)' : `(${r.delta > 0 ? '+' : ''}${d3.format('.1%')(r.delta)})`;
+}
+
+/* ---------- Trends ---------- */
+const chipsEl = document.getElementById('metric-chips');
+TREND_ORDER.forEach((m) => {
+  const b = document.createElement('button');
+  b.className = 'lw-chip'; b.textContent = M[m].short; b.dataset.m = m;
+  b.addEventListener('click', () => { selected.has(m) ? selected.delete(m) : selected.add(m); draw(); });
+  chipsEl.appendChild(b);
+});
+
+function drawExclBar() {
+  const bar = document.getElementById('excl-bar');
+  bar.hidden = !excluded.size;
+  if (!excluded.size) { bar.replaceChildren(); return; }
+  const lab = document.createElement('span'); lab.textContent = 'Excluidos:';
+  const chips = [...excluded].map(([k, label]) => {
+    const b = document.createElement('button');
+    b.textContent = '× ' + label; b.title = 'Restaurar: ' + label;
+    b.addEventListener('click', () => { excluded.delete(k); draw(); });
+    return b;
+  });
+  const all = document.createElement('button'); all.className = 'lw-reset'; all.textContent = 'Restaurar todos';
+  all.addEventListener('click', () => { excluded.clear(); draw(); });
+  bar.replaceChildren(lab, ...chips, all);
+}
+
+function drawTrends() {
+  drawExclBar();
+  chipsEl.querySelectorAll('.lw-chip').forEach((b) => b.setAttribute('aria-pressed', String(selected.has(b.dataset.m))));
+  const wrap = document.getElementById('trend-charts');
+  const metrics = TREND_ORDER.filter((m) => selected.has(m));
+  // reconstruye tarjetas según selección
+  const existing = new Map([...wrap.children].map((c) => [c.dataset.m, c]));
+  existing.forEach((c, m) => { if (!selected.has(m)) c.remove(); });
+  metrics.forEach((m) => {
+    let card = existing.get(m);
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'lw-card'; card.dataset.m = m; card.id = 'trend-' + m;
+      card.innerHTML = `<h2></h2><p class="lw-cap"></p>
+        <div class="lw-chart dash-skeleton" data-source="${m === 'followers' ? 'followers' : 'reels_metrics'} trend_stats"></div>
+        <div class="lw-stats">
+          <span><span class="lw-key" style="border-top-style:dashed;border-color:${dash.colors[0]}"></span>Promedio <b data-source="trend_stats" data-field="mean" data-f="mean">—</b></span>
+          <span><span class="lw-key" style="border-color:var(--color-fg)"></span>Mediana <b data-source="trend_stats" data-field="median" data-f="median">—</b></span>
+          <span><span class="lw-keyband" style="background:${dash.colors[0]};opacity:.18"></span>Rango medio <b data-source="trend_stats" data-field="p25" data-f="p25">—</b> – <b data-source="trend_stats" data-field="p75" data-f="p75">—</b></span>
+          <span>n = <b data-source="trend_stats" data-field="n" data-f="n">—</b></span>
+          <span class="lw-recalc lw-recalc-note"></span>
+        </div>`;
+      card.querySelector('h2').textContent = M[m].short;
+      card.querySelector('.lw-cap').textContent = m === 'followers' ? `Seguidores nuevos por día, cuenta completa · últimos ${win} días` : `Por reel · últimos ${win} días`;
+      wrap.appendChild(card);
+    }
+    card.querySelector('.lw-cap').textContent = m === 'followers' ? `Seguidores nuevos por día, cuenta completa · últimos ${win} días` : `Por reel según fecha de publicación · últimos ${win} días`;
+    wrap.appendChild(card); // mantiene orden
+  });
+  // dibujar después de que todas las tarjetas estén en la grilla, para medir el ancho real
+  [...wrap.children].forEach((card) => drawChart(card, card.dataset.m));
+}
+
+function drawChart(card, m) {
+  const box = card.querySelector('.lw-chart');
+  const statEls = card.querySelectorAll('.lw-stats [data-f]');
+  statEls.forEach((e) => e.setAttribute('data-where', `win=${win}&metric=${m}`));
+  const srcId = m === 'followers' ? 'followers' : 'reels_metrics';
+  const src = dash.data(srcId), st = dash.data('trend_stats'), rm = dash.data('reels_metrics');
+  if (src.status !== 'ok' || st.status !== 'ok' || rm.status !== 'ok') {
+    box.replaceChildren();
+    if ([src.status, st.status, rm.status].includes('error')) { box.classList.remove('dash-skeleton'); box.innerHTML = '<div class="lw-fail"><i></i>Failed to load</div>'; }
+    return;
+  }
+  box.classList.remove('dash-skeleton');
+
+  const DAY = 864e5;
+  const end = d3.max(rm.data, (r) => Date.parse(r.fecha) + r.edad_dias * DAY);
+  const start = end - Number(win) * DAY;
+  let pts;
+  if (m === 'followers') pts = src.data.map((f) => ({ key: 'f:' + f.fecha, t: Date.parse(f.fecha), v: Number(f.seguidores_nuevos), pending: Date.parse(f.fecha) >= end - 2 * DAY, label: 'Día ' + f.fecha }));
+  else pts = src.data.map((r) => ({ key: r.reel_id, t: Date.parse(r.fecha), v: r[m], pending: r.edad_dias < 3, label: r.titulo, link: r.permalink }));
+  pts = pts.filter((p) => p.t > start && p.v !== null && p.v !== undefined).sort((a, b) => a.t - b.t);
+  const nExcl = pts.filter((p) => excluded.has(p.key)).length;
+  pts = pts.filter((p) => !excluded.has(p.key));
+
+  // Estadísticas: del cálculo publicado, o recalculadas en la página si hay excluidos en esta ventana
+  let s = st.data.find((x) => x.win === win && x.metric === m);
+  const recalc = card.querySelector('.lw-recalc-note');
+  if (nExcl) {
+    const v = pts.filter((p) => !p.pending).map((p) => p.v).sort((a, b) => a - b);
+    s = v.length ? { n: v.length, mean: d3.mean(v), median: d3.quantile(v, 0.5), p25: d3.quantile(v, 0.25), p75: d3.quantile(v, 0.75) } : { n: 0, mean: null, median: null, p25: null, p75: null };
+    statEls.forEach((e) => { e.removeAttribute('data-source'); e.removeAttribute('data-where'); e.removeAttribute('data-field'); });
+    recalc.textContent = `Recalculado sin ${nExcl} ${m === 'followers' ? (nExcl === 1 ? 'día excluido' : 'días excluidos') : (nExcl === 1 ? 'reel excluido' : 'reels excluidos')}`;
+  } else {
+    statEls.forEach((e) => { e.setAttribute('data-source', 'trend_stats'); e.setAttribute('data-field', e.dataset.f); });
+    recalc.textContent = '';
+  }
+  statEls.forEach((e) => {
+    if (!nExcl) e.setAttribute('data-where', `win=${win}&metric=${m}`);
+    e.textContent = e.dataset.f === 'n' ? String(s.n) : fmt(m, s[e.dataset.f]);
+  });
+
+  const W = Math.max(280, box.clientWidth), H = 220;
+  const logOn = document.getElementById('log-scale').checked && M[m].f === 'num';
+  const yMax = d3.max([...pts.map((p) => p.v), s.p75 || 0, s.mean || 0]) || 1;
+  const y0 = (logOn ? d3.scaleSymlog().constant(Math.max(1, s.median / 10 || 1)) : d3.scaleLinear()).domain([0, yMax]).nice();
+  const tickFmt = (v) => fmt(m, v);
+  // margen izquierdo según la etiqueta más ancha
+  const svg = d3.select(box).selectAll('svg').data([0]).join('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+  svg.selectAll('*').remove();
+  const probe = svg.append('text').attr('font-size', 11).text(tickFmt(y0.domain()[1]));
+  const ml = Math.ceil(probe.node().getComputedTextLength()) + 10; probe.remove();
+  const mg = { t: 8, r: 12, b: 24, l: ml };
+  const x = d3.scaleUtc([start, end], [mg.l, W - mg.r]);
+  const y = y0.range([H - mg.b, mg.t]);
+
+  const yTicks = logOn ? y.ticks(4).filter((v, i, a) => i === 0 || y(a[i - 1]) - y(v) > 16) : y.ticks(4);
+  svg.append('g').selectAll('line').data(yTicks).join('line')
+    .attr('x1', mg.l).attr('x2', W - mg.r).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).attr('stroke', 'var(--cds-chart-grid)');
+  svg.append('g').selectAll('text').data(yTicks).join('text')
+    .attr('x', mg.l - 6).attr('y', (d) => y(d)).attr('dy', '0.32em').attr('text-anchor', 'end').attr('font-size', 11)
+    .attr('fill', 'var(--color-fg-muted)').text(tickFmt);
+  const xa = svg.append('g').attr('transform', `translate(0,${H - mg.b})`)
+    .call(d3.axisBottom(x).ticks(Math.max(2, Math.min(6, Math.floor(W / 90)))).tickFormat(d3.utcFormat('%-d %b')).tickSizeOuter(0));
+  xa.attr('font-size', null).attr('font-family', null);
+  xa.selectAll('text').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)');
+  xa.selectAll('line,path').attr('stroke', 'var(--cds-chart-axis)');
+
+  const c0 = dash.colors[0];
+  if (s.n) {
+    svg.append('rect').attr('x', mg.l).attr('width', W - mg.l - mg.r).attr('y', y(s.p75)).attr('height', Math.max(1, y(s.p25) - y(s.p75)))
+      .attr('fill', c0).attr('opacity', 0.14);
+    svg.append('line').attr('x1', mg.l).attr('x2', W - mg.r).attr('y1', y(s.median)).attr('y2', y(s.median)).attr('stroke', 'var(--color-fg)').attr('stroke-width', 1.5);
+    svg.append('line').attr('x1', mg.l).attr('x2', W - mg.r).attr('y1', y(s.mean)).attr('y2', y(s.mean)).attr('stroke', c0).attr('stroke-width', 2).attr('stroke-dasharray', '5 4');
+  }
+
+  const tip = d3.select(box).selectAll('.lw-tip').data([0]).join('div').attr('class', 'lw-tip').style('display', 'none');
+  const show = (ev, d) => {
+    tip.style('display', null).html('');
+    tip.append('div').attr('class', 'd').text(fmtDate(d.t) + (d.pending ? ' · aún madurando' : ''));
+    if (m !== 'followers') tip.append('div').text(d.label);
+    tip.append('div').append('b').text(fmt(m, d.v));
+    tip.append('div').attr('class', 'd').text('Click para excluir');
+    const [px, py] = d3.pointer(ev, box);
+    const tw = tip.node().offsetWidth;
+    tip.style('left', Math.min(Math.max(0, px + 10), box.clientWidth - tw) + 'px').style('top', Math.max(0, py - 60) + 'px');
+  };
+  const hide = () => tip.style('display', 'none');
+  const exclude = (ev, d) => { hide(); excluded.set(d.key, d.label); draw(); };
+
+  if (m === 'followers') {
+    const bw = Math.max(2, Math.min(14, ((W - mg.l - mg.r) / Number(win)) * 0.7));
+    svg.append('g').selectAll('rect').data(pts).join('rect')
+      .attr('x', (d) => x(d.t) - bw / 2).attr('width', bw).attr('y', (d) => y(d.v)).attr('height', (d) => Math.max(0, y(0) - y(d.v))).attr('rx', 2)
+      .attr('fill', c0).attr('opacity', (d) => (d.pending ? 0.3 : 0.85)).style('cursor', 'pointer')
+      .on('mousemove', show).on('mouseleave', hide).on('click', exclude);
+  } else {
+    svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', 'var(--cds-chart-muted)').attr('stroke-width', 1)
+      .attr('stroke-linejoin', 'round').attr('d', d3.line((d) => x(d.t), (d) => y(d.v)));
+    svg.append('g').selectAll('circle').data(pts).join('circle')
+      .attr('cx', (d) => x(d.t)).attr('cy', (d) => y(d.v)).attr('r', 3.5)
+      .attr('fill', (d) => (d.pending ? 'var(--color-bg)' : c0)).attr('stroke', c0).attr('stroke-width', 1.5)
+      .style('cursor', 'pointer')
+      .on('mousemove', show).on('mouseleave', hide).on('click', exclude);
+  }
+  if (!pts.length) svg.append('text').attr('x', W / 2).attr('y', H / 2).attr('text-anchor', 'middle').attr('font-size', 12).attr('fill', 'var(--color-fg-muted)').text('Sin datos en esta ventana');
+}
+
+/* ---------- Tabla de reels ---------- */
+let sortKey = 'fecha', sortDir = -1;
+document.querySelectorAll('#reels-table th button').forEach((b) => b.addEventListener('click', () => {
+  const k = b.dataset.sort; sortDir = sortKey === k ? -sortDir : (k === 'titulo' ? 1 : -1); sortKey = k; drawTable();
+}));
+
+/* Filtros: tipo de cada columna. pct = fracción guardada, se escribe en %; skip ya viene 0–100 */
+const COLS = [
+  ['fecha', 'Fecha', 'date'], ['titulo', 'Título', 'text'], ['dia', 'Día de la semana', 'text'], ['views', 'Vistas', 'num'], ['reach', 'Alcance', 'num'],
+  ['like_pv', 'Likes %', 'pct'], ['save_pv', 'Guardados %', 'pct'], ['share_pv', 'Enviados %', 'pct'], ['comment_pv', 'Comentarios %', 'pct'],
+  ['engagement', 'Engagement %', 'pct'], ['skip_rate', 'Skip rate %', 'num'], ['retention', 'Retención %', 'pct'], ['duracion_s', 'Duración (s)', 'num'],
+];
+const OPS = {
+  num: [['>', 'mayor que'], ['>=', 'mayor o igual'], ['<', 'menor que'], ['<=', 'menor o igual'], ['=', 'igual a'], ['between', 'entre']],
+  date: [['>=', 'desde'], ['<=', 'hasta'], ['=', 'igual a'], ['between', 'entre']],
+  text: [['contains', 'contiene'], ['not', 'no contiene'], ['eq', 'es igual a']],
+};
+OPS.pct = OPS.num;
+const filters = [];
+const fCol = document.getElementById('f-col'), fOp = document.getElementById('f-op'), fVal = document.getElementById('f-val'), fVal2 = document.getElementById('f-val2'), fAdd = document.getElementById('f-add');
+fCol.replaceChildren(...COLS.map(([k, l]) => new Option(l, k)));
+const colType = () => COLS.find((c) => c[0] === fCol.value)[2];
+function syncFilterInputs() {
+  const t = colType();
+  const prev = fOp.value;
+  fOp.replaceChildren(...OPS[t].map(([k, l]) => new Option(l, k)));
+  if (OPS[t].some((o) => o[0] === prev)) fOp.value = prev;
+  const inType = t === 'date' ? 'date' : t === 'text' ? 'text' : 'number';
+  [fVal, fVal2].forEach((i) => { i.type = inType; i.step = 'any'; });
+  fVal.placeholder = t === 'text' ? 'Texto' : t === 'date' ? '' : t === 'pct' ? 'Valor en %' : 'Valor';
+  fVal2.hidden = fOp.value !== 'between';
+  fAdd.disabled = !fVal.value || (fOp.value === 'between' && !fVal2.value);
+}
+fCol.addEventListener('change', syncFilterInputs);
+fOp.addEventListener('change', syncFilterInputs);
+[fVal, fVal2].forEach((i) => { i.addEventListener('input', syncFilterInputs); i.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !fAdd.disabled) fAdd.click(); }); });
+fAdd.addEventListener('click', () => {
+  const [col, label, type] = COLS.find((c) => c[0] === fCol.value);
+  filters.push({ col, label, type, op: fOp.value, opLabel: fOp.selectedOptions[0].textContent, v: fVal.value.trim(), v2: fVal2.value.trim() });
+  fVal.value = ''; fVal2.value = ''; syncFilterInputs(); drawTable();
+});
+syncFilterInputs();
+
+function passes(r, f) {
+  const x = r[f.col];
+  if (f.type === 'text') {
+    const a = String(x ?? '').toLowerCase(), b = f.v.toLowerCase();
+    return f.op === 'contains' ? a.includes(b) : f.op === 'not' ? !a.includes(b) : a === b;
+  }
+  if (x === null || x === undefined) return false;
+  const conv = (v) => (f.type === 'date' ? v : f.type === 'pct' ? Number(v) / 100 : Number(v));
+  const a = f.type === 'date' ? String(x) : Number(x), v = conv(f.v), v2 = conv(f.v2);
+  if (f.op === '>') return a > v; if (f.op === '>=') return a >= v; if (f.op === '<') return a < v; if (f.op === '<=') return a <= v;
+  if (f.op === '=') return f.type === 'date' ? a === v : Math.abs(a - v) < 1e-9 || (f.type === 'pct' && Math.abs(a - v) < 5e-5);
+  if (f.op === 'between') { const lo = v < v2 ? v : v2, hi = v < v2 ? v2 : v; return a >= lo && a <= hi; }
+  return true;
+}
+
+function drawFilterChips() {
+  const box = document.getElementById('f-chips');
+  box.hidden = !filters.length;
+  if (!filters.length) { box.replaceChildren(); return; }
+  const unit = (f) => (f.type === 'pct' ? '%' : '');
+  const chips = filters.map((f, i) => {
+    const b = document.createElement('button');
+    const val = f.type === 'text' ? `"${f.v}"` : f.op === 'between' ? `${f.v}${unit(f)} y ${f.v2}${unit(f)}` : f.v + unit(f);
+    b.textContent = `× ${f.label} ${f.opLabel} ${val}`;
+    b.title = 'Quitar filtro';
+    b.addEventListener('click', () => { filters.splice(i, 1); drawTable(); });
+    return b;
+  });
+  const all = document.createElement('button'); all.className = 'lw-reset'; all.textContent = 'Quitar todos';
+  all.addEventListener('click', () => { filters.length = 0; drawTable(); });
+  box.replaceChildren(...chips, all);
+}
+
+function drawTable() {
+  const d = dash.data('reels_metrics');
+  const tb = document.querySelector('#reels-table tbody');
+  document.querySelectorAll('#reels-table th').forEach((th) => {
+    const b = th.querySelector('button');
+    th.setAttribute('aria-sort', b.dataset.sort === sortKey ? (sortDir > 0 ? 'ascending' : 'descending') : 'none');
+  });
+  drawFilterChips();
+  if (d.status !== 'ok') { tb.replaceChildren(); return; }
+  const rows = d.data.filter((r) => filters.every((f) => passes(r, f))).slice()
+    .sort((a, b) => { const A = a[sortKey], B = b[sortKey]; if (A === null) return 1; if (B === null) return -1; return (A > B ? 1 : A < B ? -1 : 0) * sortDir; });
+  document.getElementById('reel-count').textContent = filters.length ? `${rows.length} de ${d.data.length} reels` : `${d.data.length} reels`;
+  const pct = (v, f) => (v === null || v === undefined ? '—' : d3.format(f)(v));
+  tb.replaceChildren(...rows.map((r) => {
+    const tr = document.createElement('tr'); tr.dataset.key = r.reel_id;
+    const td = (txt, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = txt; tr.appendChild(c); return c; };
+    td(r.fecha, null).style.whiteSpace = 'nowrap';
+    const t = document.createElement('td');
+    if (r.permalink) { const a = document.createElement('a'); a.href = r.permalink; a.target = '_blank'; a.rel = 'noopener'; a.textContent = r.titulo; t.appendChild(a); } else t.textContent = r.titulo;
+    tr.appendChild(t);
+    ['views', 'reach'].forEach((k) => td(d3.format(',')(r[k]), 'n'));
+    ['like_pv', 'save_pv', 'share_pv', 'comment_pv'].forEach((k) => td(pct(r[k], '.2%'), 'n'));
+    td(pct(r.engagement, '.2%'), 'n');
+    td(r.skip_rate === null ? '—' : d3.format('.1f')(r.skip_rate) + '%', 'n');
+    td(pct(r.retention, '.1%'), 'n');
+    td(r.duracion_s === null ? '—' : d3.format('.0f')(r.duracion_s) + ' s', 'n');
+    return tr;
+  }));
+}
+
+/* ---------- Modelo ---------- */
+dash.calc('m_importance_share', {
+  inputs: ['m_importance'],
+  title: 'Importancia en % del total',
+  description: 'Cada método (permutación, SHAP, LIME) normalizado a % de la suma de sus importancias por modelo y especificación; las importancias negativas de permutación cuentan como 0.',
+  fn: (m_importance) => {
+    const tot = {};
+    m_importance.forEach((r) => { const k = r.spec + '|' + r.model + '|' + r.method; tot[k] = (tot[k] || 0) + Math.max(0, r.value); });
+    return m_importance.map((r) => ({
+      spec: r.spec, model: r.model, method: r.method, feature: r.feature,
+      share: Math.round((Math.max(0, r.value) / tot[r.spec + '|' + r.model + '|' + r.method]) * 1000) / 1000,
+    }));
+  },
+});
+
+const FEAT = {
+  log_likes: 'Likes (log)', log_comments: 'Comentarios (log)', log_shares: 'Enviados (log)', log_saves: 'Guardados (log)',
+  like_rate: 'Likes por 100 vistas', comment_rate: 'Comentarios por 100 vistas', share_rate: 'Enviados por 100 vistas',
+  save_rate: 'Guardados por 100 vistas', skip_rate: 'Skip rate (hook)', avg_watch_s: 'Tiempo prom. visto',
+  retencion: 'Retención (% del video)', duracion_s: 'Duración del video',
+  hora: 'Hora de publicación', fin_de_semana: 'Publicado en fin de semana', log_edad: 'Antigüedad del reel (log)',
+};
+const METHODS = [['permutacion', 'Permutación'], ['shap', 'SHAP'], ['lime', 'LIME']];
+const SPEC_TEXT = {
+  tasas: {
+    desc: 'Predice log(alcance) con señales de calidad del contenido: interacciones por cada 100 vistas, skip rate de los primeros 3 segundos, retención (% del video visto, topada en 100%), duración del video, hora, fin de semana y antigüedad del reel (control, porque las métricas son acumuladas). Es la especificación recomendada para decidir qué mejorar en los videos.',
+    caveat: 'Ojo con las tasas: dividir por vistas mete una relación mecánica (los reels que se van virales llegan a no seguidores, que dan like menos). Por eso "Likes por 100 vistas" sale con efecto negativo: no significa que los likes bajen el alcance. La retención y el skip rate miden casi lo mismo (quien no se salta el inicio ve más del video); con el skip rate en el modelo, la retención casi no agrega información. Se excluyen los reels sin duración.',
+  },
+  conteos: {
+    desc: 'Predice log(alcance) con los conteos absolutos (likes, comentarios, enviados, guardados, en log) más skip rate y tiempo promedio visto. Es lo que pediste, y predice muy bien.',
+    caveat: 'Ojo: predice bien porque es casi circular. Más alcance trae mecánicamente más likes y guardados, así que el modelo aprende "muchos likes = mucho alcance" (causalidad al revés). Sirve para ver qué interacción acompaña más al alcance, no para saber qué causa el alcance. Para eso usa la vista de tasas.',
+  },
+};
+let mSpec = 'tasas', mModel = 'xgboost', pickedReel = null;
+document.querySelectorAll('#spec-seg button').forEach((b) => b.addEventListener('click', () => { mSpec = b.dataset.spec; draw(); }));
+document.querySelectorAll('#model-seg button').forEach((b) => b.addEventListener('click', () => { mModel = b.dataset.model; draw(); }));
+document.getElementById('reel-pick').addEventListener('change', (e) => { pickedReel = e.target.value; draw(); });
+
+const cssColor = (c) => { const el = document.createElement('span'); el.style.color = c; document.body.appendChild(el); const v = getComputedStyle(el).color; el.remove(); return v; };
+const failBox = (box) => { box.innerHTML = '<div class="lw-fail"><i></i>Failed to load</div>'; };
+const svgIn = (box, H) => {
+  const W = Math.max(280, box.clientWidth);
+  box.querySelectorAll('svg').forEach((n) => n.remove());
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+  return { svg, W };
+};
+const textW = (svg, txts, size = 11) => {
+  const t = svg.append('g').attr('font-size', size);
+  const w = d3.max(txts, (s) => t.append('text').text(s).node().getComputedTextLength()) || 0;
+  t.remove(); return Math.ceil(w);
+};
+const styleAxis = (g) => { g.attr('font-size', null).attr('font-family', null); g.selectAll('text').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)'); g.selectAll('line,path').attr('stroke', 'var(--cds-chart-axis)'); };
+const tipFor = (box) => d3.select(box).selectAll('.lw-tip').data([0]).join('div').attr('class', 'lw-tip').style('display', 'none');
+const placeTip = (tip, ev, box) => { const [px, py] = d3.pointer(ev, box); const tw = tip.node().offsetWidth; tip.style('left', Math.min(Math.max(0, px + 10), box.clientWidth - tw) + 'px').style('top', Math.max(0, py - 50) + 'px'); };
+
+function drawModel() {
+  document.querySelectorAll('#spec-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.spec === mSpec)));
+  document.querySelectorAll('#model-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.model === mModel)));
+  document.getElementById('spec-desc').textContent = SPEC_TEXT[mSpec].desc;
+  document.getElementById('spec-caveat').textContent = SPEC_TEXT[mSpec].caveat;
+  document.querySelectorAll('.lw-mname').forEach((e) => (e.textContent = mModel === 'xgboost' ? 'XGBoost' : 'Regresión lineal'));
+  drawModelTiles();
+  ['xgboost', 'lineal'].forEach(drawImportance);
+  drawBeeswarm();
+  drawCoefs();
+  drawPredScatter();
+  drawLocal();
+}
+
+function drawModelTiles() {
+  const d = dash.data('m_metrics');
+  document.querySelectorAll('#m-tiles [data-mt]').forEach((e) => {
+    e.setAttribute('data-where', `spec=${mSpec}&model=${e.dataset.mt}`);
+    if (d.status !== 'ok') { if (d.status === 'error') e.classList.remove('dash-skeleton'); return; }
+    e.classList.remove('dash-skeleton');
+    const r = d.data.find((x) => x.spec === mSpec && x.model === e.dataset.mt);
+    const f = e.dataset.field;
+    e.textContent = f === 'r2_cv' ? d3.format('.3f')(r.r2_cv) : f === 'n' ? String(r.n) : d3.format('.1f')(r[f]) + '%';
+  });
+}
+
+function drawImportance(model) {
+  const card = document.getElementById('imp-' + model), box = card.querySelector('.lw-mchart');
+  const d = dash.data('m_importance_share');
+  if (d.status !== 'ok') { box.querySelectorAll('svg').forEach((n) => n.remove()); if (d.status === 'error') failBox(box); return; }
+  box.querySelector('.lw-fail')?.remove();
+  const rows = d.data.filter((r) => r.spec === mSpec && r.model === model);
+  const feats = [...new Set(rows.map((r) => r.feature))]
+    .sort((a, b) => (rows.find((r) => r.feature === b && r.method === 'shap').share) - (rows.find((r) => r.feature === a && r.method === 'shap').share));
+  const rowH = 30, H = feats.length * rowH + 28;
+  box.style.minHeight = H + 'px';
+  const { svg, W } = svgIn(box, H);
+  const ml = textW(svg, feats.map((f) => FEAT[f])) + 12;
+  const x = d3.scaleLinear([0, d3.max(rows, (r) => r.share) * 1.05], [ml, W - 40]).nice();
+  const y = d3.scaleBand(feats, [0, H - 28]).paddingInner(0.25);
+  const yi = d3.scaleBand(METHODS.map((m) => m[0]), [0, y.bandwidth()]).padding(0.1);
+  svg.append('g').selectAll('line').data(x.ticks(4)).join('line').attr('x1', (v) => x(v)).attr('x2', (v) => x(v)).attr('y1', 0).attr('y2', H - 28).attr('stroke', 'var(--cds-chart-grid)');
+  styleAxis(svg.append('g').attr('transform', `translate(0,${H - 28})`).call(d3.axisBottom(x).ticks(4).tickFormat(d3.format('.0%')).tickSizeOuter(0)));
+  svg.append('g').selectAll('text').data(feats).join('text').attr('x', ml - 8).attr('y', (f) => y(f) + y.bandwidth() / 2).attr('dy', '0.32em')
+    .attr('text-anchor', 'end').attr('font-size', 11).attr('fill', 'var(--color-fg)').text((f) => FEAT[f]);
+  const tip = tipFor(box);
+  svg.append('g').selectAll('rect').data(rows).join('rect')
+    .attr('x', ml).attr('y', (r) => y(r.feature) + yi(r.method)).attr('height', yi.bandwidth()).attr('rx', 2)
+    .attr('width', (r) => Math.max(0, x(r.share) - ml)).attr('fill', (r) => dash.colors[METHODS.findIndex((m) => m[0] === r.method)])
+    .on('mousemove', (ev, r) => { tip.style('display', null).html(''); tip.append('div').attr('class', 'd').text(FEAT[r.feature]); tip.append('div').text(METHODS.find((m) => m[0] === r.method)[1] + ': ').append('b').text(d3.format('.1%')(r.share)); placeTip(tip, ev, box); })
+    .on('mouseleave', () => tip.style('display', 'none'));
+  const leg = card.querySelector('.lw-legend');
+  leg.replaceChildren(...METHODS.map(([k, label], i) => { const s = document.createElement('span'); const ic = document.createElement('i'); ic.style.background = dash.colors[i]; s.append(ic, label); return s; }));
+}
+
+function drawBeeswarm() {
+  const box = document.querySelector('#beeswarm .lw-mchart');
+  const d = dash.data('m_local');
+  if (d.status !== 'ok') { box.querySelectorAll('svg').forEach((n) => n.remove()); if (d.status === 'error') failBox(box); return; }
+  box.querySelector('.lw-fail')?.remove();
+  const rows = d.data.filter((r) => r.spec === mSpec && r.model === mModel && r.feature !== '__base__');
+  const imp = d3.rollup(rows, (v) => d3.mean(v, (r) => Math.abs(r.shap)), (r) => r.feature);
+  const feats = [...imp.keys()].sort((a, b) => imp.get(b) - imp.get(a));
+  const rowH = 30, H = feats.length * rowH + 28;
+  box.style.minHeight = H + 'px';
+  const { svg, W } = svgIn(box, H);
+  const ml = textW(svg, feats.map((f) => FEAT[f])) + 12;
+  const ext = d3.max(rows, (r) => Math.abs(r.shap)) || 1;
+  const x = d3.scaleLinear([-ext, ext], [ml, W - 12]).nice();
+  const y = d3.scaleBand(feats, [0, H - 28]).padding(0.1);
+  const lo = cssColor('var(--cds-chart-muted)'), hi = cssColor(dash.colors[0]);
+  document.querySelector('#beeswarm .lw-lo').style.background = lo;
+  document.querySelector('#beeswarm .lw-hi').style.background = hi;
+  const col = d3.interpolateRgb(lo, hi);
+  svg.append('line').attr('x1', x(0)).attr('x2', x(0)).attr('y1', 0).attr('y2', H - 28).attr('stroke', 'var(--cds-chart-reference)');
+  styleAxis(svg.append('g').attr('transform', `translate(0,${H - 28})`).call(d3.axisBottom(x).ticks(5).tickFormat((v) => (v > 0 ? '+' : '') + d3.format('.0%')(Math.expm1(v))).tickSizeOuter(0)));
+  svg.append('g').selectAll('text').data(feats).join('text').attr('x', ml - 8).attr('y', (f) => y(f) + y.bandwidth() / 2).attr('dy', '0.32em')
+    .attr('text-anchor', 'end').attr('font-size', 11).attr('fill', 'var(--color-fg)').text((f) => FEAT[f]);
+  const tip = tipFor(box);
+  const jit = (s) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return (h % 1000) / 1000 - 0.5; };
+  svg.append('g').selectAll('circle').data(rows).join('circle')
+    .attr('cx', (r) => x(r.shap)).attr('cy', (r) => y(r.feature) + y.bandwidth() / 2 + jit(r.reel_id + r.feature) * y.bandwidth() * 0.8)
+    .attr('r', 2.6).attr('fill', (r) => col(r.pct)).attr('opacity', 0.85)
+    .on('mousemove', (ev, r) => { tip.style('display', null).html(''); tip.append('div').attr('class', 'd').text(FEAT[r.feature] + ' = ' + d3.format(',.2f')(r.x)); tip.append('div').text('Efecto en alcance: ').append('b').text((r.shap > 0 ? '+' : '') + d3.format('.1%')(Math.expm1(r.shap))); placeTip(tip, ev, box); })
+    .on('mouseleave', () => tip.style('display', 'none'));
+}
+
+function drawCoefs() {
+  const box = document.querySelector('#coefs .lw-mchart');
+  const d = dash.data('m_coefs');
+  if (d.status !== 'ok') { box.querySelectorAll('svg').forEach((n) => n.remove()); if (d.status === 'error') failBox(box); return; }
+  box.querySelector('.lw-fail')?.remove();
+  const rows = d.data.filter((r) => r.spec === mSpec).map((r) => ({ ...r, e: r.efecto_pct / 100, elo: Math.expm1(r.lo), ehi: Math.expm1(r.hi) }))
+    .sort((a, b) => b.e - a.e);
+  const rowH = 28, H = rows.length * rowH + 28;
+  box.style.minHeight = H + 'px';
+  const { svg, W } = svgIn(box, H);
+  const ml = textW(svg, rows.map((r) => FEAT[r.feature])) + 12;
+  const x = d3.scaleLinear([Math.min(0, d3.min(rows, (r) => r.elo)), Math.max(0, d3.max(rows, (r) => r.ehi))], [ml, W - 50]).nice();
+  const y = d3.scaleBand(rows.map((r) => r.feature), [0, H - 28]).padding(0.3);
+  svg.append('g').selectAll('line').data(x.ticks(5)).join('line').attr('x1', (v) => x(v)).attr('x2', (v) => x(v)).attr('y1', 0).attr('y2', H - 28).attr('stroke', 'var(--cds-chart-grid)');
+  svg.append('line').attr('x1', x(0)).attr('x2', x(0)).attr('y1', 0).attr('y2', H - 28).attr('stroke', 'var(--cds-chart-reference)');
+  styleAxis(svg.append('g').attr('transform', `translate(0,${H - 28})`).call(d3.axisBottom(x).ticks(5).tickFormat((v) => (v > 0 ? '+' : '') + d3.format('.0%')(v)).tickSizeOuter(0)));
+  svg.append('g').selectAll('text').data(rows).join('text').attr('x', ml - 8).attr('y', (r) => y(r.feature) + y.bandwidth() / 2).attr('dy', '0.32em')
+    .attr('text-anchor', 'end').attr('font-size', 11).attr('fill', 'var(--color-fg)').text((r) => FEAT[r.feature]);
+  const sig = (r) => r.p < 0.05;
+  const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (r) => `translate(0,${y(r.feature) + y.bandwidth() / 2})`);
+  g.append('line').attr('x1', (r) => x(r.elo)).attr('x2', (r) => x(r.ehi)).attr('stroke', (r) => (sig(r) ? (r.e > 0 ? 'var(--color-ok)' : 'var(--color-bad)') : 'var(--cds-chart-muted)')).attr('stroke-width', 2).attr('stroke-linecap', 'round');
+  g.append('circle').attr('cx', (r) => x(r.e)).attr('r', 4).attr('fill', (r) => (sig(r) ? (r.e > 0 ? 'var(--color-ok)' : 'var(--color-bad)') : 'var(--cds-chart-muted)'));
+  g.append('text').attr('x', (r) => x(r.ehi) + 6).attr('dy', '0.32em').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)')
+    .text((r) => (r.e > 0 ? '+' : '') + d3.format('.1f')(r.efecto_pct) + '%' + (sig(r) ? '' : ' (n.s.)'));
+}
+
+function drawPredScatter() {
+  const box = document.querySelector('#pred-scatter .lw-mchart');
+  const d = dash.data('m_predictions');
+  if (d.status !== 'ok') { box.querySelectorAll('svg').forEach((n) => n.remove()); if (d.status === 'error') failBox(box); return; }
+  box.querySelector('.lw-fail')?.remove();
+  const rows = d.data.filter((r) => r.spec === mSpec && r.model === mModel);
+  const H = 280;
+  const { svg, W } = svgIn(box, H);
+  const lo = d3.min(rows, (r) => Math.min(r.real, r.predicho)) * 0.8, hi = d3.max(rows, (r) => Math.max(r.real, r.predicho)) * 1.2;
+  const fmtC = (v) => (v >= 1000 ? d3.format('~s')(v).replace('k', ' mil') : String(v));
+  const ml = textW(svg, [fmtC(hi)]) + 14, mb = 34;
+  const x = d3.scaleLog([lo, hi], [ml, W - 12]), y = d3.scaleLog([lo, hi], [H - mb, 8]);
+  const xt = x.ticks().filter((v) => /^[125]0*$/.test(String(v)));
+  svg.append('g').selectAll('line').data(xt).join('line').attr('x1', ml).attr('x2', W - 12).attr('y1', (v) => y(v)).attr('y2', (v) => y(v)).attr('stroke', 'var(--cds-chart-grid)');
+  styleAxis(svg.append('g').attr('transform', `translate(0,${H - mb})`).call(d3.axisBottom(x).tickValues(xt).tickFormat(fmtC).tickSizeOuter(0)));
+  styleAxis(svg.append('g').attr('transform', `translate(${ml},0)`).call(d3.axisLeft(y).tickValues(xt).tickFormat(fmtC).tickSizeOuter(0)));
+  svg.append('text').attr('x', W - 12).attr('y', H - 4).attr('text-anchor', 'end').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text('Alcance real →');
+  svg.append('text').attr('x', ml + 6).attr('y', 14).attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text('↑ Predicho');
+  svg.append('line').attr('x1', x(lo)).attr('y1', y(lo)).attr('x2', x(hi)).attr('y2', y(hi)).attr('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '4 4');
+  const tip = tipFor(box);
+  svg.append('g').selectAll('circle').data(rows).join('circle').attr('cx', (r) => x(r.real)).attr('cy', (r) => y(r.predicho)).attr('r', 3.5)
+    .attr('fill', dash.colors[0]).attr('opacity', (r) => (r.reel_id === pickedReel ? 1 : 0.6)).attr('stroke', (r) => (r.reel_id === pickedReel ? 'var(--color-fg)' : 'none')).attr('stroke-width', 2)
+    .style('cursor', 'pointer')
+    .on('mousemove', (ev, r) => { tip.style('display', null).html(''); tip.append('div').attr('class', 'd').text(r.fecha); tip.append('div').text(r.titulo); tip.append('div').text('Real ' + d3.format(',')(r.real) + ' · predicho ' + d3.format(',')(r.predicho)); tip.append('div').attr('class', 'd').text('Click para explicarlo'); placeTip(tip, ev, box); })
+    .on('mouseleave', () => tip.style('display', 'none'))
+    .on('click', (ev, r) => { pickedReel = r.reel_id; draw(); document.getElementById('local-exp').scrollIntoView({ block: 'nearest' }); });
+}
+
+function drawLocal() {
+  const box = document.querySelector('#local-exp .lw-mchart');
+  const sel = document.getElementById('reel-pick'), sum = document.getElementById('local-summary');
+  const L = dash.data('m_local'), P = dash.data('m_predictions');
+  if (L.status !== 'ok' || P.status !== 'ok') { box.querySelectorAll('svg').forEach((n) => n.remove()); if ([L.status, P.status].includes('error')) failBox(box); return; }
+  box.querySelector('.lw-fail')?.remove();
+  const preds = P.data.filter((r) => r.spec === mSpec && r.model === mModel).sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+  if (!pickedReel || !preds.some((r) => r.reel_id === pickedReel)) pickedReel = preds.slice().sort((a, b) => b.real - a.real)[0].reel_id;
+  if (sel.options.length !== preds.length) sel.replaceChildren(...preds.map((r) => new Option(`${r.fecha} · ${r.titulo.slice(0, 70)}`, r.reel_id)));
+  sel.value = pickedReel;
+  const pr = preds.find((r) => r.reel_id === pickedReel);
+  const rows = L.data.filter((r) => r.spec === mSpec && r.model === mModel && r.reel_id === pickedReel);
+  const base = rows.find((r) => r.feature === '__base__').shap;
+  const fr = rows.filter((r) => r.feature !== '__base__').sort((a, b) => Math.abs(b.shap) - Math.abs(a.shap));
+  const fit = base + d3.sum(fr, (r) => r.shap);
+  sum.textContent = `Alcance real ${d3.format(',')(pr.real)} · el modelo (entrenado con todos los reels) lo explica como ${d3.format(',')(Math.round(Math.expm1(fit)))}, partiendo de un reel típico de ${d3.format(',')(Math.round(Math.expm1(base)))}. Predicción fuera de muestra: ${d3.format(',')(pr.predicho)}.`;
+  const rowH = 30, H = fr.length * rowH + 28;
+  box.style.minHeight = H + 'px';
+  const { svg, W } = svgIn(box, H);
+  const labels = fr.map((r) => `${FEAT[r.feature]} = ${d3.format(',.2~f')(r.x)}`);
+  const ml = textW(svg, labels) + 12;
+  const ext = d3.max(fr, (r) => Math.max(Math.abs(r.shap), Math.abs(r.lime))) || 1;
+  const x = d3.scaleLinear([-ext, ext], [ml, W - 12]).nice();
+  const y = d3.scaleBand(fr.map((r) => r.feature), [0, H - 28]).padding(0.25);
+  svg.append('line').attr('x1', x(0)).attr('x2', x(0)).attr('y1', 0).attr('y2', H - 28).attr('stroke', 'var(--cds-chart-reference)');
+  styleAxis(svg.append('g').attr('transform', `translate(0,${H - 28})`).call(d3.axisBottom(x).ticks(5).tickFormat((v) => (v > 0 ? '+' : '') + d3.format('.2~f')(v)).tickSizeOuter(0)));
+  svg.append('g').selectAll('text').data(fr).join('text').attr('x', ml - 8).attr('y', (r) => y(r.feature) + y.bandwidth() / 2).attr('dy', '0.32em')
+    .attr('text-anchor', 'end').attr('font-size', 11).attr('fill', 'var(--color-fg)').text((r, i) => labels[i]);
+  const c = (v) => (v >= 0 ? 'var(--color-ok)' : 'var(--color-bad)');
+  const bh = y.bandwidth() / 2;
+  const tip = tipFor(box);
+  const g = svg.append('g').selectAll('g').data(fr).join('g').attr('transform', (r) => `translate(0,${y(r.feature)})`)
+    .on('mousemove', (ev, r) => { tip.style('display', null).html(''); tip.append('div').attr('class', 'd').text(FEAT[r.feature] + ' · percentil ' + Math.round(r.pct * 100)); tip.append('div').text('SHAP: ' + (r.shap > 0 ? '+' : '') + d3.format('.1%')(Math.expm1(r.shap)) + ' en alcance'); tip.append('div').text('LIME (peso local): ' + d3.format('+.3f')(r.lime)); placeTip(tip, ev, box); })
+    .on('mouseleave', () => tip.style('display', 'none'));
+  g.append('rect').attr('x', (r) => Math.min(x(0), x(r.shap))).attr('width', (r) => Math.abs(x(r.shap) - x(0))).attr('height', bh - 1).attr('rx', 2).attr('fill', (r) => c(r.shap)).attr('opacity', 0.85);
+  g.append('rect').attr('y', bh).attr('x', (r) => Math.min(x(0), x(r.lime))).attr('width', (r) => Math.abs(x(r.lime) - x(0))).attr('height', bh - 1).attr('rx', 2).attr('fill', 'none').attr('stroke', (r) => c(r.lime)).attr('stroke-width', 1.5);
+}
+
+
+/* ---------- Duración × Hook ---------- */
+dash.calc('matrix', {
+  inputs: ['reels_metrics'],
+  title: 'Matriz duración × skip rate',
+  description: 'Por ventana, grupo de duración (corto <45 s, medio 45–80 s, largo ≥80 s) y grupo de skip rate (mejor <40%, promedio 40–60%, peor >60%): cantidad de reels y medianas de sus métricas. Reels con ≥3 días y duración conocida.',
+  fn: (reels_metrics) => {
+    const DAY = 864e5;
+    const end = Math.max(...reels_metrics.map((r) => Date.parse(r.fecha) + r.edad_dias * DAY));
+    const durG = (s) => (s < 45 ? 'corto' : s < 80 ? 'medio' : 'largo');
+    const skipG = (s) => (s < 40 ? 'mejor' : s <= 60 ? 'promedio' : 'peor');
+    const ok = reels_metrics.filter((r) => r.edad_dias >= 3 && r.duracion_s !== null && r.skip_rate !== null)
+      .map((r) => ({ ...r, t: Date.parse(r.fecha), dur: durG(r.duracion_s), skip: skipG(r.skip_rate) }));
+    const med = (a) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y), i = (s.length - 1) / 2; return (s[Math.floor(i)] + s[Math.ceil(i)]) / 2; };
+    const r4 = (x) => (x === null ? null : Math.round(x * 10000) / 10000);
+    const rows = [];
+    for (const w of ['all', '180', '90']) {
+      const inW = ok.filter((r) => w === 'all' || r.t > end - Number(w) * DAY);
+      for (const dur of ['corto', 'medio', 'largo', 'todos']) {
+        for (const skip of ['mejor', 'promedio', 'peor', 'todos']) {
+          const g = inW.filter((r) => (dur === 'todos' || r.dur === dur) && (skip === 'todos' || r.skip === skip));
+          const reach = g.map((r) => r.reach);
+          rows.push({
+            win: w, dur, skip, n: g.length,
+            reach_median: med(reach), reach_mean: reach.length ? Math.round(reach.reduce((a, b) => a + b, 0) / reach.length) : null,
+            engagement_median: r4(med(g.map((r) => r.engagement))), retention_median: r4(med(g.map((r) => r.retention))),
+            save_rate_median: r4(med(g.map((r) => r.save_rate))), share_rate_median: r4(med(g.map((r) => r.share_rate))),
+          });
+        }
+      }
+    }
+    return rows;
+  },
+});
+
+const FMET = [
+  ['reach_median', 'Alcance mediano', 'num'], ['reach_mean', 'Alcance promedio', 'num'], ['engagement_median', 'Engagement mediano', 'pct'],
+  ['retention_median', 'Retención mediana', 'pct'], ['save_rate_median', 'Guardados % mediano', 'pct'], ['share_rate_median', 'Enviados % mediano', 'pct'], ['n', 'Cantidad de reels', 'int'],
+];
+const DUR_L = { corto: ['Corto', '< 45 s'], medio: ['Medio', '45–80 s'], largo: ['Largo', '≥ 80 s'], todos: ['Todos', 'cualquier duración'] };
+const SKIP_L = { mejor: ['Mejor que la media', 'skip < 40%'], promedio: ['Promedio', 'skip 40–60%'], peor: ['Peor que la media', 'skip > 60%'], todos: ['Todos', 'cualquier skip'] };
+let fWin = 'all', fMet = 'reach_median';
+document.querySelectorAll('#fwin-seg button').forEach((b) => b.addEventListener('click', () => { fWin = b.dataset.fwin; draw(); }));
+const fchips = document.getElementById('fmetric-chips');
+FMET.forEach(([k, label]) => { const b = document.createElement('button'); b.className = 'lw-chip'; b.dataset.k = k; b.textContent = label; b.addEventListener('click', () => { fMet = k; draw(); }); fchips.appendChild(b); });
+const fFmt = (v, kind) => (v === null || v === undefined ? '—' : kind === 'pct' ? d3.format('.1%')(v) : kind === 'int' ? String(v) : Math.abs(v) >= 10000 ? compact.format(v) : d3.format(',.0f')(v));
+
+function drawFormato() {
+  document.querySelectorAll('#fwin-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.fwin === fWin)));
+  fchips.querySelectorAll('.lw-chip').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === fMet)));
+  const [, label, kind] = FMET.find((m) => m[0] === fMet);
+  document.getElementById('heat-title').textContent = label + ' por duración y skip rate';
+  const box = document.querySelector('#heatmap .lw-heat');
+  const d = dash.data('matrix');
+  if (d.status !== 'ok') { box.replaceChildren(); if (d.status === 'error') failBox(box); else box.classList.add('dash-skeleton'); return; }
+  box.classList.remove('dash-skeleton');
+  const rows = d.data.filter((r) => r.win === fWin);
+  const inner = rows.filter((r) => r.dur !== 'todos' && r.skip !== 'todos' && r[fMet] !== null);
+  const lo = cssColor('var(--color-panel)'), hi = cssColor(dash.colors[0]);
+  const scale = d3.scaleLinear(d3.extent(inner, (r) => r[fMet]).map((v, i, a) => (a[0] === a[1] && i === 0 ? 0 : v)), [0.08, 1]).clamp(true);
+  const els = [];
+  const head = (txt, sub, cls) => { const h = document.createElement('div'); h.className = 'h ' + (cls || ''); const b = document.createElement('b'); b.textContent = txt; const s2 = document.createElement('span'); s2.textContent = sub; h.append(b, s2); return h; };
+  els.push(head('Duración ↓ · Skip →', '', ''));
+  ['mejor', 'promedio', 'peor', 'todos'].forEach((k) => els.push(head(...SKIP_L[k])));
+  ['corto', 'medio', 'largo', 'todos'].forEach((dur) => {
+    els.push(head(...DUR_L[dur], 'rh'));
+    ['mejor', 'promedio', 'peor', 'todos'].forEach((skip) => {
+      const r = rows.find((x) => x.dur === dur && x.skip === skip);
+      const c = document.createElement('div');
+      const tot = dur === 'todos' || skip === 'todos';
+      c.className = 'c' + (tot ? ' tot' : '') + (r.n < 5 ? ' thin' : '');
+      const v = document.createElement('div'); v.className = 'v';
+      v.setAttribute('data-source', 'matrix'); v.setAttribute('data-field', fMet); v.setAttribute('data-where', `win=${fWin}&dur=${dur}&skip=${skip}`);
+      v.textContent = fFmt(r[fMet], kind);
+      const n = document.createElement('div'); n.className = 'n';
+      n.setAttribute('data-source', 'matrix'); n.setAttribute('data-field', 'n'); n.setAttribute('data-where', `win=${fWin}&dur=${dur}&skip=${skip}`);
+      n.textContent = fMet === 'n' ? (r.n === 1 ? 'reel' : 'reels') : r.n + (r.n === 1 ? ' reel' : ' reels');
+      if (fMet === 'n') n.removeAttribute('data-source'), n.removeAttribute('data-field'), n.removeAttribute('data-where');
+      if (!tot && r[fMet] !== null) {
+        const t = scale(r[fMet]);
+        c.style.background = d3.interpolateRgb(lo, hi)(t);
+        if (t > 0.55) { c.style.color = '#fff'; c.style.borderColor = 'transparent'; }
+      }
+      c.append(v, n);
+      els.push(c);
+    });
+  });
+  box.replaceChildren(...els);
+}
+
+/* ---------- Render ---------- */
+function draw() {
+  document.querySelectorAll('.lw-nav button[data-win]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.win === win)));
+  document.querySelector('.lw-nav .lw-seg').hidden = tab === 'formato' || tab === 'modelo' || tab === 'data';
+  drawTake();
+  if (tab === 'scorecard') drawScorecard();
+  if (tab === 'trends') drawTrends();
+  if (tab === 'data') drawTable();
+  if (tab === 'modelo') drawModel();
+  if (tab === 'formato') drawFormato();
+  // marcas del resumen
+  const r = dash.data('resumen');
+  document.querySelectorAll('[data-source="resumen"]').forEach((e) => {
+    if (r.status !== 'ok') return;
+    e.classList.remove('dash-skeleton');
+    const v = r.data[0][e.dataset.field];
+    e.textContent = e.dataset.field === 'reels' ? String(v) : v;
+  });
+}
+
+dash.onData(draw);
+const named = location.hash.slice(1);
+showTab(['data', 'scorecard', 'trends', 'formato', 'modelo'].includes(named) ? named : 'scorecard', false);
+</script>
+<p class="lw-foot">Fuente: Instagram API (Instagram Login) · extracción diaria con GitHub Actions · métricas acumuladas desde la publicación.</p>
+</div>
+</body>
+</html>
